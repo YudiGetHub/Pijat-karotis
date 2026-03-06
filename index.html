@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Pijat Karotis Log - Yudi</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: env(safe-area-inset-top) 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+        }
+
+        .card {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+        }
+
+        input {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-sizing: border-box;
+            font-size: 16px; /* Mencegah auto-zoom di iPhone */
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 10px 0 20px 0;
+        }
+
+        .status-idle { background: #f1f5f9; color: #64748b; }
+        .status-press { background: #fee2e2; color: var(--danger); border: 2px solid var(--danger); animation: pulse 1s infinite; }
+        .status-rest { background: #dcfce7; color: var(--success); border: 2px solid var(--success); }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .timer-val { font-size: 5rem; font-weight: 900; color: #1e293b; margin: 10px 0; }
+
+        .progress-track {
+            width: 100%;
+            height: 16px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
+        #progressFill { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; }
+
+        .btn-action {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 20px;
+            border-radius: 18px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-action:disabled { background: #cbd5e1; box-shadow: none; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 0.9rem; }
+        
+        .log-time { color: #64748b; font-size: 0.8rem; }
+        .sync-info { font-size: 0.75rem; color: #94a3b8; text-align: center; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h3 style="margin:0; color: #1e293b;">Pengaturan Cloud</h3>
+        <input type="password" id="ghToken" placeholder="GitHub PAT (Kunci Akses)">
+        <input type="text" id="ghRepo" placeholder="Username/Repo (Contoh: yudi/log-karotis)">
+    </div>
+
+    <div class="card" style="text-align: center;">
+        <div id="statusIndicator" class="status-badge status-idle">Siap Mulai</div>
+        <div class="timer-val" id="timeValue">0</div>
+        
+        <div class="progress-track">
+            <div id="progressFill"></div>
+        </div>
+        
+        <button id="mainButton" class="btn-action" onclick="startFase()">MULAI 1 FASE</button>
+        
+        <p style="margin-top: 20px; font-weight: 600;">
+            Hari Ini: <span id="countDisplay">0</span> / 6 Fase
+        </p>
+        <div class="sync-info" id="syncStatus">Status: Cloud Siap</div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin:0 0 15px 0;">Riwayat 5 Terakhir</h3>
+        <table id="historyTable">
+            <tbody id="historyBody">
+                <tr><td colspan="2" style="text-align:center">Memuat data...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let dailyFases = 0;
+    const dateKey = new Date().toLocaleDateString('id-ID');
+
+    // Load credentials
+    document.getElementById('ghToken').value = localStorage.getItem('yudi_token') || '';
+    document.getElementById('ghRepo').value = localStorage.getItem('yudi_repo') || '';
+
+    async function githubFetch(method, body = null) {
+        const token = document.getElementById('ghToken').value;
+        const repo = document.getElementById('ghRepo').value;
+        if(!token || !repo) return null;
+
+        localStorage.setItem('yudi_token', token);
+        localStorage.setItem('yudi_repo', repo);
+
+        const url = `https://api.github.com/repos/${repo}/contents/data.json`;
+        const headers = { "Authorization": `token ${token}`, "Content-Type": "application/json" };
+        
+        try {
+            if (method === 'GET') {
+                const res = await fetch(url, { headers });
+                return res.ok ? await res.json() : null;
+            } else {
+                const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
+                return await res.json();
+            }
+        } catch (e) { return null; }
+    }
+
+    async function syncData() {
+        const file = await githubFetch('GET');
+        if (file) {
+            const content = JSON.parse(atob(file.content));
+            const todayCount = content.filter(i => i.date === dateKey).length;
+            dailyFases = todayCount;
+            document.getElementById('countDisplay').innerText = dailyFases;
+            updateTable(content);
+        }
+    }
+
+    function updateTable(data) {
+        const body = document.getElementById('historyBody');
+        body.innerHTML = data.slice(0, 5).map(i => `
+            <tr>
+                <td><span class="log-time">${i.time}</span><br>${i.date}</td>
+                <td style="font-weight:600">Fase ${i.phaseNum} Selesai</td>
+            </tr>
+        `).join('');
+    }
+
+    async function startTimer(seconds, label, mode) {
+        return new Promise(resolve => {
+            let remain = seconds;
+            const el = document.getElementById('timeValue');
+            const fill = document.getElementById('progressFill');
+            const badge = document.getElementById('statusIndicator');
+
+            const interval = setInterval(() => {
+                el.innerText = remain;
+                fill.style.width = ((seconds - remain) / seconds * 100) + "%";
+                badge.innerText = label;
+                badge.className = `status-badge status-${mode}`;
+                fill.style.backgroundColor = (mode === 'press') ? "var(--danger)" : "var(--success)";
+
+                if (remain <= 0) { clearInterval(interval); resolve(); }
+                remain--;
+            }, 1000);
+        });
+    }
+
+    async function startFase() {
+        const btn = document.getElementById('mainButton');
+        const syncLabel = document.getElementById('syncStatus');
+        btn.disabled = true;
+
+        await startTimer(10, "TEKAN SEKARANG", "press");
+        await startTimer(30, "LEPAS / ISTIRAHAT", "rest");
+
+        dailyFases++;
+        document.getElementById('countDisplay').innerText = dailyFases;
+
+        const newEntry = {
+            date: dateKey,
+            time: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
+            phaseNum: dailyFases
+        };
+
+        syncLabel.innerText = "Status: Menyimpan ke Cloud...";
+        
+        const currentFile = await githubFetch('GET');
+        let sha = "";
+        let history = [];
+        
+        if (currentFile) {
+            sha = currentFile.sha;
+            history = JSON.parse(atob(currentFile.content));
+        }
+
+        history.unshift(newEntry);
+        const res = await githubFetch('PUT', {
+            message: `Log Fase ${dailyFases} - ${dateKey}`,
+            content: btoa(JSON.stringify(history, null, 2)),
+            sha: sha
+        });
+
+        if (res) {
+            syncLabel.innerText = "Status: Tersimpan di GitHub";
+            updateTable(history);
+        } else {
+            syncLabel.innerText = "Status: Gagal Simpan!";
+        }
+
+        document.getElementById('statusIndicator').className = "status-badge status-idle";
+        document.getElementById('statusIndicator').innerText = "Siap Mulai";
+        document.getElementById('progressFill').style.width = "0%";
+        btn.disabled = false;
+    }
+
+    // Initial load
+    syncData();
+</script>
+
+</body>
+</html>
