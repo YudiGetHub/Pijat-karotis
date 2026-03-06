@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
-    <title>Pijat Karotis - Yudi StayAwake</title>
+    <title>Pijat Karotis - Yudi Louder Sound</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -102,7 +102,7 @@
         <p style="margin-top: 20px; font-weight: 600;">
             Hari Ini: <span id="sessionCount">0</span> / 5 Sesi
         </p>
-        <div class="sync-info" id="syncStatus">Layar akan tetap menyala selama sesi</div>
+        <div class="sync-info" id="syncStatus">Suara Detik Kencang Aktif</div>
     </div>
 
     <div class="card" style="text-align: left;">
@@ -124,53 +124,57 @@
     let totalSessionsToday = 0;
     let wakeLock = null;
     const dateKey = new Date().toLocaleDateString('id-ID');
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = new AudioContext();
 
-    // Fungsi Jaga Layar Tetap Menyala
     async function requestWakeLock() {
         try {
             if ('wakeLock' in navigator) {
                 wakeLock = await navigator.wakeLock.request('screen');
-                console.log('Layar terkunci (tetap menyala)');
             }
-        } catch (err) {
-            console.error(`${err.name}, ${err.message}`);
-        }
+        } catch (err) { console.log("WakeLock Gagal"); }
     }
 
-    // Fungsi Lepas Kunci Layar
     function releaseWakeLock() {
         if (wakeLock !== null) {
-            wakeLock.release().then(() => {
-                wakeLock = null;
-                console.log('Kunci layar dilepas');
-            });
+            wakeLock.release().then(() => { wakeLock = null; });
         }
     }
 
+    // FUNGSI SUARA DETIK KENCANG (DISAMAKAN DENGAN BEEP)
     function playTick() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
+        
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.frequency.value = 150;
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime); // Frekuensi tinggi agar nyaring
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime); // Volume disamakan dengan Beep
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+        
         osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
+        osc.stop(audioCtx.currentTime + 0.15);
     }
 
+    // FUNGSI SUARA PENANDA (BEEP)
     function playBeep(freq, duration) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
+        
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + (duration/1000));
+        
         osc.start();
-        setTimeout(() => osc.stop(), duration);
+        osc.stop(audioCtx.currentTime + (duration/1000));
     }
 
     async function githubApi(method, body = null) {
@@ -215,16 +219,16 @@
             const badge = document.getElementById('statusIndicator');
 
             const interval = setInterval(() => {
+                if (remain > 0) playTick(); // Suara detik kencang
+                
                 el.innerText = remain;
                 fill.style.width = ((seconds - remain) / seconds * 100) + "%";
                 badge.innerText = label;
                 badge.className = `status-badge status-${mode}`;
                 fill.style.backgroundColor = (mode === 'press') ? "var(--danger)" : "var(--success)";
 
-                if (remain > 0) playTick();
-
                 if (remain === 0) {
-                    playBeep(mode === 'press' ? 1000 : 600, 600);
+                    playBeep(mode === 'press' ? 1200 : 600, 800);
                     clearInterval(interval); 
                     resolve(); 
                 }
@@ -239,9 +243,8 @@
         const repLabel = document.getElementById('repIndicator');
         
         if (audioCtx.state === 'suspended') audioCtx.resume();
+        
         btn.disabled = true;
-
-        // AKTIFKAN PENJAGA LAYAR
         await requestWakeLock();
         
         for (let i = 1; i <= 10; i++) {
@@ -250,7 +253,6 @@
             await runTimer(30, "LEPAS", "rest");
         }
 
-        // MATIKAN PENJAGA LAYAR (Sesi Selesai)
         releaseWakeLock();
 
         totalSessionsToday++;
@@ -279,7 +281,7 @@
         updateUIHistory(history);
         
         repLabel.innerText = "Sesi 10 Gerakan Selesai!";
-        document.getElementById('statusIndicator').innerText = "SELESAI";
+        document.getElementById('statusIndicator').innerText = "DONE";
         document.getElementById('statusIndicator').className = "status-badge status-idle";
         btn.disabled = false;
     }
