@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <link rel="manifest" href="manifest.json">
-    <title>Pijat Karotis - Yudi Louder Sound</title>
+    <title>Pijat Karotis - Yudi Firebase</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -89,7 +88,7 @@
 
 <div class="container">
     <div class="card">
-        <div id="statusIndicator" class="status-badge status-idle">Siap Sesi</div>
+        <div id="statusIndicator" class="status-badge status-idle">Firebase Ready</div>
         <div id="repIndicator" class="repetition-val">Gerakan: 0 / 10</div>
         <div class="timer-val" id="timeValue">0</div>
         
@@ -102,115 +101,103 @@
         <p style="margin-top: 20px; font-weight: 600;">
             Hari Ini: <span id="sessionCount">0</span> / 5 Sesi
         </p>
-        <div class="sync-info" id="syncStatus">Suara Detik Kencang Aktif</div>
+        <div class="sync-info" id="syncStatus">Data tersimpan otomatis di Firestore</div>
     </div>
 
     <div class="card" style="text-align: left;">
-        <h3 style="margin:0 0 15px 0; font-size: 1.1rem;">Riwayat Sesi</h3>
+        <h3 style="margin:0 0 15px 0; font-size: 1.1rem;">Riwayat Sesi Terkini</h3>
         <table id="historyTable">
             <tbody id="historyBody">
-                <tr><td style="text-align:center">Memuat riwayat...</td></tr>
+                <tr><td style="text-align:center">Menghubungkan ke database...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
-<script>
-    const GH_CONFIG = {
-        token: "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",
-        repo: "YudiGitHub/Pijat-karotis"
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // Konfigurasi Anda
+    const firebaseConfig = {
+        apiKey: "AIzaSyBVBps98Qu3JriGOOtWdLIq9rCgkXcvO5g",
+        authDomain: "pijat-karotis-yudi.firebaseapp.com",
+        projectId: "pijat-karotis-yudi",
+        storageBucket: "pijat-karotis-yudi.firebasestorage.app",
+        messagingSenderId: "670015628269",
+        appId: "1:670015628269:web:02280565fa0fa9426bbde4",
+        measurementId: "G-24EWRFWX2S"
     };
 
-    let totalSessionsToday = 0;
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
     let wakeLock = null;
     const dateKey = new Date().toLocaleDateString('id-ID');
-    
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = new AudioContext();
 
-    async function requestWakeLock() {
-        try {
-            if ('wakeLock' in navigator) {
-                wakeLock = await navigator.wakeLock.request('screen');
-            }
-        } catch (err) { console.log("WakeLock Gagal"); }
-    }
-
-    function releaseWakeLock() {
-        if (wakeLock !== null) {
-            wakeLock.release().then(() => { wakeLock = null; });
-        }
-    }
-
-    // FUNGSI SUARA DETIK KENCANG (DISAMAKAN DENGAN BEEP)
+    // --- FUNGSI AUDIO ---
     function playTick() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, audioCtx.currentTime); // Frekuensi tinggi agar nyaring
-        gain.gain.setValueAtTime(0.3, audioCtx.currentTime); // Volume disamakan dengan Beep
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime); 
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-        
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.15);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    // FUNGSI SUARA PENANDA (BEEP)
     function playBeep(freq, duration) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
+        osc.connect(gain); gain.connect(audioCtx.destination);
         osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + (duration/1000));
-        
-        osc.start();
-        osc.stop(audioCtx.currentTime + (duration/1000));
+        osc.start(); setTimeout(() => osc.stop(), duration);
     }
 
-    async function githubApi(method, body = null) {
-        const url = `https://api.github.com/repos/${GH_CONFIG.repo}/contents/data.json`;
-        const headers = { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" };
+    // --- FUNGSI STAY AWAKE ---
+    async function requestWakeLock() {
+        try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+    }
+
+    // --- FUNGSI FIRESTORE ---
+    
+    // Load data otomatis (Real-time)
+    const q = query(collection(db, "sesi_pijat"), orderBy("timestamp", "desc"), limit(5));
+    onSnapshot(q, (snapshot) => {
+        const historyBody = document.getElementById('historyBody');
+        let html = "";
+        let countToday = 0;
+
+        snapshot.forEach((doc) => {
+            const data = doc.data();
+            if(data.date === dateKey) countToday++;
+            html += `<tr><td><b>Sesi Selesai</b><br><small>${data.date} | ${data.time}</small></td>
+                     <td style="text-align:right; color:var(--primary)">${data.reps} Gerakan</td></tr>`;
+        });
+
+        document.getElementById('sessionCount').innerText = countToday;
+        historyBody.innerHTML = html || '<tr><td style="text-align:center">Belum ada riwayat</td></tr>';
+    });
+
+    async function saveSession() {
         try {
-            if (method === 'GET') {
-                const res = await fetch(url, { headers });
-                return res.ok ? await res.json() : null;
-            } else {
-                const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify(body) });
-                return await res.json();
-            }
-        } catch (e) { return null; }
-    }
-
-    async function loadData() {
-        const file = await githubApi('GET');
-        if (file) {
-            const content = JSON.parse(atob(file.content));
-            totalSessionsToday = content.filter(i => i.date === dateKey).length;
-            document.getElementById('sessionCount').innerText = totalSessionsToday;
-            updateUIHistory(content);
+            await addDoc(collection(db, "sesi_pijat"), {
+                date: dateKey,
+                time: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
+                reps: 10,
+                timestamp: Date.now()
+            });
+            document.getElementById('syncStatus').innerText = "Data tersimpan di Cloud";
+        } catch (e) {
+            console.error("Gagal simpan: ", e);
         }
     }
 
-    function updateUIHistory(data) {
-        const body = document.getElementById('historyBody');
-        body.innerHTML = data.slice(0, 5).map(i => `
-            <tr>
-                <td><b>Sesi Selesai</b><br><small>${i.date} | ${i.time}</small></td>
-                <td style="text-align:right; color:var(--primary)">10 Gerakan</td>
-            </tr>
-        `).join('');
-    }
-
+    // --- LOGIKA TIMER ---
     async function runTimer(seconds, label, mode) {
         return new Promise(resolve => {
             let remain = seconds;
@@ -219,8 +206,7 @@
             const badge = document.getElementById('statusIndicator');
 
             const interval = setInterval(() => {
-                if (remain > 0) playTick(); // Suara detik kencang
-                
+                if (remain > 0) playTick();
                 el.innerText = remain;
                 fill.style.width = ((seconds - remain) / seconds * 100) + "%";
                 badge.innerText = label;
@@ -237,13 +223,11 @@
         });
     }
 
-    async function startFullSession() {
+    window.startFullSession = async function() {
         const btn = document.getElementById('mainButton');
-        const syncLabel = document.getElementById('syncStatus');
         const repLabel = document.getElementById('repIndicator');
         
         if (audioCtx.state === 'suspended') audioCtx.resume();
-        
         btn.disabled = true;
         await requestWakeLock();
         
@@ -253,40 +237,14 @@
             await runTimer(30, "LEPAS", "rest");
         }
 
-        releaseWakeLock();
-
-        totalSessionsToday++;
-        document.getElementById('sessionCount').innerText = totalSessionsToday;
-
-        const entry = {
-            date: dateKey,
-            time: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
-            type: "Full Session",
-            reps: 10
-        };
-
-        syncLabel.innerText = "Sinkronisasi ke GitHub...";
-        const currentFile = await githubApi('GET');
-        let sha = currentFile ? currentFile.sha : "";
-        let history = currentFile ? JSON.parse(atob(currentFile.content)) : [];
-
-        history.unshift(entry);
-        await githubApi('PUT', {
-            message: `Sesi ${totalSessionsToday} - ${dateKey}`,
-            content: btoa(JSON.stringify(history, null, 2)),
-            sha: sha
-        });
-
-        syncLabel.innerText = "Data Berhasil Disimpan";
-        updateUIHistory(history);
+        if (wakeLock) wakeLock.release();
+        await saveSession();
         
-        repLabel.innerText = "Sesi 10 Gerakan Selesai!";
+        repLabel.innerText = "Sesi Selesai!";
         document.getElementById('statusIndicator').innerText = "DONE";
         document.getElementById('statusIndicator').className = "status-badge status-idle";
         btn.disabled = false;
     }
-
-    loadData();
 </script>
 </body>
 </html>
