@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="manifest" href="manifest.json">
-    <title>Pijat Karotis Log - Yudi</title>
+    <title>Pijat Karotis - Yudi Sound</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -16,7 +16,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, sans-serif;
             background-color: var(--bg);
             margin: 0;
             padding: 20px;
@@ -34,16 +34,7 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.05);
             margin-bottom: 20px;
             border: 1px solid #e2e8f0;
-        }
-
-        input {
-            width: 100%;
-            padding: 14px;
-            margin: 10px 0;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            box-sizing: border-box;
-            font-size: 16px;
+            text-align: center;
         }
 
         .status-badge {
@@ -52,16 +43,15 @@
             border-radius: 50px;
             font-weight: 700;
             text-transform: uppercase;
-            margin: 10px 0 20px 0;
+            margin-bottom: 10px;
         }
 
         .status-idle { background: #f1f5f9; color: #64748b; }
-        .status-press { background: #fee2e2; color: var(--danger); border: 2px solid var(--danger); animation: pulse 1s infinite; }
+        .status-press { background: #fee2e2; color: var(--danger); border: 2px solid var(--danger); }
         .status-rest { background: #dcfce7; color: var(--success); border: 2px solid var(--success); }
 
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-
-        .timer-val { font-size: 5rem; font-weight: 900; color: #1e293b; margin: 10px 0; text-align: center; }
+        .timer-val { font-size: 5.5rem; font-weight: 900; color: #1e293b; margin: 5px 0; }
+        .repetition-val { font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-bottom: 15px; }
 
         .progress-track {
             width: 100%;
@@ -80,7 +70,7 @@
             border: none;
             padding: 20px;
             border-radius: 18px;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             font-weight: 700;
             cursor: pointer;
             width: 100%;
@@ -90,75 +80,82 @@
         .btn-action:disabled { background: #cbd5e1; box-shadow: none; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 0.9rem; }
+        td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 0.9rem; }
         
-        .sync-info { font-size: 0.75rem; color: #94a3b8; text-align: center; margin-top: 15px; }
+        .sync-info { font-size: 0.75rem; color: #94a3b8; margin-top: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h3 style="margin:0; color: #1e293b;">Pengaturan Cloud</h3>
-        <input type="password" id="ghToken" placeholder="GitHub PAT (Token)">
-        <input type="text" id="ghRepo" placeholder="Username/Repo (Contoh: yudi/log-pijat)">
-    </div>
-
-    <div class="card" style="text-align: center;">
-        <div id="statusIndicator" class="status-badge status-idle">Siap Mulai</div>
+        <div id="statusIndicator" class="status-badge status-idle">Siap Sesi</div>
+        <div id="repIndicator" class="repetition-val">Gerakan: 0 / 10</div>
         <div class="timer-val" id="timeValue">0</div>
         
         <div class="progress-track">
             <div id="progressFill"></div>
         </div>
         
-        <button id="mainButton" class="btn-action" onclick="startFase()">MULAI 1 FASE</button>
+        <button id="mainButton" class="btn-action" onclick="startFullSession()">MULAI 1 SESI</button>
         
         <p style="margin-top: 20px; font-weight: 600;">
-            Hari Ini: <span id="countDisplay">0</span> / 6 Fase
+            Hari Ini: <span id="sessionCount">0</span> / 5 Sesi
         </p>
-        <div class="sync-info" id="syncStatus">Status: Cloud Siap</div>
+        <div class="sync-info" id="syncStatus">Suara Detik Aktif</div>
     </div>
 
-    <div class="card">
-        <h3 style="margin:0 0 15px 0;">Riwayat Cloud</h3>
+    <div class="card" style="text-align: left;">
+        <h3 style="margin:0 0 15px 0; font-size: 1.1rem;">Riwayat Sesi (GitHub)</h3>
         <table id="historyTable">
             <tbody id="historyBody">
-                <tr><td colspan="2" style="text-align:center">Memuat data...</td></tr>
+                <tr><td style="text-align:center">Memuat riwayat...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
 <script>
-    let dailyFases = 0;
+    // Konfigurasi Otomatis
+    const GH_CONFIG = {
+        token: "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",
+        repo: "YudiGitHub/Pijat-karotis"
+    };
+
+    let totalSessionsToday = 0;
     const dateKey = new Date().toLocaleDateString('id-ID');
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-    document.getElementById('ghToken').value = localStorage.getItem('yudi_token') || '';
-    document.getElementById('ghRepo').value = localStorage.getItem('yudi_repo') || '';
+    // Suara Detik (Tik)
+    function playTick() {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.value = 150; // Suara rendah untuk detik
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
 
+    // Suara Penanda (Beep)
     function playBeep(freq, duration) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
         osc.start();
         setTimeout(() => osc.stop(), duration);
     }
 
-    async function githubFetch(method, body = null) {
-        const token = document.getElementById('ghToken').value;
-        const repo = document.getElementById('ghRepo').value;
-        if(!token || !repo) return null;
-
-        localStorage.setItem('yudi_token', token);
-        localStorage.setItem('yudi_repo', repo);
-
-        const url = `https://api.github.com/repos/${repo}/contents/data.json`;
-        const headers = { "Authorization": `token ${token}`, "Content-Type": "application/json" };
-        
+    async function githubApi(method, body = null) {
+        const url = `https://api.github.com/repos/${GH_CONFIG.repo}/contents/data.json`;
+        const headers = { "Authorization": `token ${GH_CONFIG.token}`, "Content-Type": "application/json" };
         try {
             if (method === 'GET') {
                 const res = await fetch(url, { headers });
@@ -170,27 +167,27 @@
         } catch (e) { return null; }
     }
 
-    async function syncData() {
-        const file = await githubFetch('GET');
+    async function loadData() {
+        const file = await githubApi('GET');
         if (file) {
             const content = JSON.parse(atob(file.content));
-            dailyFases = content.filter(i => i.date === dateKey).length;
-            document.getElementById('countDisplay').innerText = dailyFases;
-            updateTable(content);
+            totalSessionsToday = content.filter(i => i.date === dateKey).length;
+            document.getElementById('sessionCount').innerText = totalSessionsToday;
+            updateUIHistory(content);
         }
     }
 
-    function updateTable(data) {
+    function updateUIHistory(data) {
         const body = document.getElementById('historyBody');
         body.innerHTML = data.slice(0, 5).map(i => `
             <tr>
-                <td>${i.time}<br><small>${i.date}</small></td>
-                <td style="font-weight:600">Fase ${i.phaseNum} Selesai</td>
+                <td><b>Sesi Selesai</b><br><small>${i.date} | ${i.time}</small></td>
+                <td style="text-align:right; color:var(--primary)">10 Gerakan</td>
             </tr>
         `).join('');
     }
 
-    async function startTimer(seconds, label, mode) {
+    async function runTimer(seconds, label, mode) {
         return new Promise(resolve => {
             let remain = seconds;
             const el = document.getElementById('timeValue');
@@ -204,8 +201,11 @@
                 badge.className = `status-badge status-${mode}`;
                 fill.style.backgroundColor = (mode === 'press') ? "var(--danger)" : "var(--success)";
 
+                // Bunyi Tik per detik (kecuali saat 0)
+                if (remain > 0) playTick();
+
                 if (remain === 0) {
-                    playBeep(mode === 'press' ? 800 : 400, 500);
+                    playBeep(mode === 'press' ? 1000 : 600, 600); // Beep penanda pindah fase
                     clearInterval(interval); 
                     resolve(); 
                 }
@@ -214,42 +214,52 @@
         });
     }
 
-    async function startFase() {
+    async function startFullSession() {
         const btn = document.getElementById('mainButton');
         const syncLabel = document.getElementById('syncStatus');
+        const repLabel = document.getElementById('repIndicator');
+        
         if (audioCtx.state === 'suspended') audioCtx.resume();
         btn.disabled = true;
+        
+        for (let i = 1; i <= 10; i++) {
+            repLabel.innerText = `Gerakan: ${i} / 10`;
+            await runTimer(10, "TEKAN", "press");
+            await runTimer(30, "LEPAS", "rest");
+        }
 
-        await startTimer(10, "TEKAN", "press");
-        await startTimer(30, "LEPAS", "rest");
+        totalSessionsToday++;
+        document.getElementById('sessionCount').innerText = totalSessionsToday;
 
-        dailyFases++;
-        document.getElementById('countDisplay').innerText = dailyFases;
-
-        const newEntry = {
+        const entry = {
             date: dateKey,
             time: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
-            phaseNum: dailyFases
+            type: "Full Session",
+            reps: 10
         };
 
-        syncLabel.innerText = "Menyimpan...";
-        const currentFile = await githubFetch('GET');
+        syncLabel.innerText = "Sinkronisasi ke GitHub...";
+        const currentFile = await githubApi('GET');
         let sha = currentFile ? currentFile.sha : "";
         let history = currentFile ? JSON.parse(atob(currentFile.content)) : [];
 
-        history.unshift(newEntry);
-        await githubFetch('PUT', {
-            message: `Fase ${dailyFases} - ${dateKey}`,
+        history.unshift(entry);
+        await githubApi('PUT', {
+            message: `Sesi ${totalSessionsToday} - ${dateKey}`,
             content: btoa(JSON.stringify(history, null, 2)),
             sha: sha
         });
 
-        syncLabel.innerText = "Tersimpan di GitHub";
-        updateTable(history);
+        syncLabel.innerText = "Data Berhasil Disimpan";
+        updateUIHistory(history);
+        
+        repLabel.innerText = "Sesi 10 Gerakan Selesai!";
+        document.getElementById('statusIndicator').innerText = "DONE";
+        document.getElementById('statusIndicator').className = "status-badge status-idle";
         btn.disabled = false;
     }
 
-    syncData();
+    loadData();
 </script>
 </body>
 </html>
