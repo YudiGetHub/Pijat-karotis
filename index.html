@@ -4,47 +4,119 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Pijat Karotis - Yudi Firebase Stable</title>
+    <title>Pijat Karotis - Yudi Filter Hari Ini</title>
     <style>
-        :root { --primary: #2563eb; --danger: #dc2626; --success: #16a34a; --bg: #f8fafc; --card: #ffffff; }
-        body { font-family: -apple-system, sans-serif; background-color: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        :root {
+            --primary: #2563eb;
+            --danger: #dc2626;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .container { width: 100%; max-width: 450px; }
-        .card { background: var(--card); padding: 24px; border-radius: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; text-align: center; }
-        .status-badge { display: inline-block; padding: 12px 30px; border-radius: 50px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+
+        .card {
+            background: var(--card);
+            padding: 24px;
+            border-radius: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
         .status-idle { background: #f1f5f9; color: #64748b; }
         .status-press { background: #fee2e2; color: var(--danger); border: 2px solid var(--danger); }
         .status-rest { background: #dcfce7; color: var(--success); border: 2px solid var(--success); }
+
         .timer-val { font-size: 5.5rem; font-weight: 900; color: #1e293b; margin: 5px 0; }
         .repetition-val { font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-bottom: 15px; }
-        .progress-track { width: 100%; height: 16px; background: #f1f5f9; border-radius: 10px; overflow: hidden; margin-bottom: 25px; }
+
+        .progress-track {
+            width: 100%;
+            height: 16px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+
         #progressFill { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; }
-        .btn-action { background: var(--primary); color: white; border: none; padding: 20px; border-radius: 18px; font-size: 1.3rem; font-weight: 700; cursor: pointer; width: 100%; box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); }
+
+        .btn-action {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 20px;
+            border-radius: 18px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+        }
+
         .btn-action:disabled { background: #cbd5e1; box-shadow: none; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 0.9rem; }
+        
         .sync-info { font-size: 0.75rem; color: #94a3b8; margin-top: 15px; }
     </style>
 </head>
 <body>
+
 <div class="container">
     <div class="card">
-        <div id="statusIndicator" class="status-badge status-idle">Firebase Aktif</div>
+        <div id="statusIndicator" class="status-badge status-idle">Database Aktif</div>
         <div id="repIndicator" class="repetition-val">Gerakan: 0 / 10</div>
         <div class="timer-val" id="timeValue">0</div>
-        <div class="progress-track"><div id="progressFill"></div></div>
+        
+        <div class="progress-track">
+            <div id="progressFill"></div>
+        </div>
+        
         <button id="mainButton" class="btn-action" onclick="startFullSession()">MULAI 1 SESI</button>
-        <p style="margin-top: 20px; font-weight: 600;">Hari Ini: <span id="sessionCount">0</span> / 5 Sesi</p>
-        <div class="sync-info" id="syncStatus">Data tersimpan di Firebase</div>
+        
+        <p style="margin-top: 20px; font-weight: 600;">
+            Hari Ini: <span id="sessionCount">0</span> / 5 Sesi
+        </p>
+        <div class="sync-info" id="syncStatus">Menampilkan riwayat hari ini saja</div>
     </div>
+
     <div class="card" style="text-align: left;">
-        <h3 style="margin:0 0 15px 0; font-size: 1.1rem;">Riwayat Sesi</h3>
-        <table id="historyTable"><tbody id="historyBody"><tr><td style="text-align:center">Menghubungkan...</td></tr></tbody></table>
+        <h3 style="margin:0 0 15px 0; font-size: 1.1rem;">Riwayat Hari Ini</h3>
+        <table id="historyTable">
+            <tbody id="historyBody">
+                <tr><td style="text-align:center">Memuat riwayat...</td></tr>
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyBVBps98Qu3JriGOOtWdLIq9rCgkXcvO5g",
@@ -59,6 +131,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
     let wakeLock = null;
     const dateKey = new Date().toLocaleDateString('id-ID');
 
@@ -67,6 +140,7 @@
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = 'sine';
         osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime); 
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
@@ -87,19 +161,27 @@
         try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
     }
 
-    const q = query(collection(db, "sesi_pijat"), orderBy("timestamp", "desc"), limit(5));
+    // --- FILTER DATA HARI INI SAJA ---
+    const q = query(
+        collection(db, "sesi_pijat"), 
+        where("date", "==", dateKey), // Hanya ambil data yang tanggalnya sama dengan hari ini
+        orderBy("timestamp", "desc")
+    );
+
     onSnapshot(q, (snapshot) => {
         const historyBody = document.getElementById('historyBody');
         let html = "";
         let countToday = 0;
+        
         snapshot.forEach((doc) => {
             const data = doc.data();
-            if(data.date === dateKey) countToday++;
+            countToday++;
             html += `<tr><td><b>Sesi Selesai</b><br><small>${data.date} | ${data.time}</small></td>
                      <td style="text-align:right; color:var(--primary)">${data.reps} Gerakan</td></tr>`;
         });
+        
         document.getElementById('sessionCount').innerText = countToday;
-        historyBody.innerHTML = html || '<tr><td style="text-align:center">Belum ada riwayat</td></tr>';
+        historyBody.innerHTML = html || '<tr><td style="text-align:center">Belum ada riwayat hari ini</td></tr>';
     });
 
     async function saveSession() {
@@ -110,7 +192,7 @@
                 reps: 10,
                 timestamp: Date.now()
             });
-        } catch (e) { alert("Gagal Simpan: " + e.message); }
+        } catch (e) { console.error("Gagal simpan:", e); }
     }
 
     async function runTimer(seconds, label, mode) {
@@ -125,7 +207,7 @@
                 fill.style.width = ((seconds - remain) / seconds * 100) + "%";
                 badge.innerText = label;
                 badge.className = `status-badge status-${mode}`;
-                fill.style.backgroundColor = (mode === 'press') ? "var(--danger)" : "var(--success)";
+                fill.style.backgroundColor = (mode === 'press' ? "var(--danger)" : "var(--success)");
                 if (remain === 0) {
                     playBeep(mode === 'press' ? 1200 : 600, 800);
                     clearInterval(interval); resolve(); 
