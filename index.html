@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Pijat Karotis - Yudi Stable</title>
+    <title>Pijat Karotis - Kalender Riwayat</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -78,6 +78,26 @@
 
         .btn-action:disabled { background: #cbd5e1; box-shadow: none; }
 
+        /* Style untuk Filter Tanggal */
+        .filter-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 12px;
+        }
+
+        input[type="date"] {
+            border: 1px solid #cbd5e1;
+            padding: 8px;
+            border-radius: 8px;
+            font-family: inherit;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 0.9rem; }
         
@@ -99,18 +119,22 @@
         <button id="mainButton" class="btn-action" onclick="startFullSession()">MULAI 1 SESI</button>
         
         <p style="margin-top: 20px; font-weight: 600;">
-            Hari Ini: <span id="sessionCount">0</span> / 5 Sesi
+            Sesi pada Tanggal Terpilih: <span id="sessionCount">0</span>
         </p>
-        <div class="sync-info" id="syncStatus">Menampilkan riwayat hari ini saja</div>
     </div>
 
     <div class="card" style="text-align: left;">
-        <h3 style="margin:0 0 15px 0; font-size: 1.1rem;">Riwayat Hari Ini</h3>
+        <div class="filter-section">
+            <span style="font-weight: 700; font-size: 0.9rem;">Pilih Tanggal:</span>
+            <input type="date" id="datePicker">
+        </div>
+        
         <table id="historyTable">
             <tbody id="historyBody">
                 <tr><td style="text-align:center">Memuat riwayat...</td></tr>
             </tbody>
         </table>
+        <div class="sync-info" id="syncStatus">Gunakan kalender untuk melihat sesi lama</div>
     </div>
 </div>
 
@@ -133,14 +157,80 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     let wakeLock = null;
-    const dateKey = new Date().toLocaleDateString('id-ID');
+    let unsubscribe = null; // Untuk membersihkan listener lama
 
+    // Inisialisasi Tanggal (Default ke hari ini)
+    const datePicker = document.getElementById('datePicker');
+    const today = new Date();
+    datePicker.value = today.toISOString().split('T')[0];
+
+    // Fungsi untuk merubah format tanggal kalender ke format tampilan (id-ID)
+    function formatToIdDate(dateString) {
+        const [year, month, day] = dateString.split('-');
+        return `${parseInt(day)}/${parseInt(month)}/${year}`;
+    }
+
+    // Fungsi utama Load Data berdasarkan tanggal pilihan
+    function loadData(selectedDate) {
+        // Berhenti mendengarkan data lama jika ada
+        if (unsubscribe) unsubscribe();
+
+        const formattedDate = formatToIdDate(selectedDate);
+        const q = query(
+            collection(db, "sesi_pijat"), 
+            where("date", "==", formattedDate),
+            orderBy("timestamp", "desc")
+        );
+
+        unsubscribe = onSnapshot(q, (snapshot) => {
+            const historyBody = document.getElementById('historyBody');
+            let html = "";
+            let count = 0;
+            
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                count++;
+                html += `<tr><td><b>Sesi Selesai</b><br><small>${data.date} | ${data.time}</small></td>
+                         <td style="text-align:right; color:var(--primary)">${data.reps} Gerakan</td></tr>`;
+            });
+            
+            document.getElementById('sessionCount').innerText = count;
+            historyBody.innerHTML = html || '<tr><td style="text-align:center">Tidak ada riwayat pada tanggal ini</td></tr>';
+        }, (error) => {
+            console.error(error);
+            document.getElementById('historyBody').innerHTML = '<tr><td style="text-align:center; color:red">Error: Pastikan Index Firestore Aktif</td></tr>';
+        });
+    }
+
+    // Jalankan pertama kali
+    loadData(datePicker.value);
+
+    // Jalankan setiap kali tanggal di kalender diubah
+    datePicker.addEventListener('change', (e) => {
+        loadData(e.target.value);
+    });
+
+    async function saveSession() {
+        const now = new Date();
+        const displayDate = now.toLocaleDateString('id-ID');
+        const displayTime = now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'});
+        
+        try {
+            await addDoc(collection(db, "sesi_pijat"), {
+                date: displayDate,
+                time: displayTime,
+                reps: 10,
+                timestamp: Date.now()
+            });
+        } catch (e) { console.error("Gagal simpan:", e); }
+    }
+
+    // --- LOGIKA TIMER (Sama seperti sebelumnya) ---
     function playTick() {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.type = 'sine';
         osc.frequency.setValueAtTime(800, audioCtx.currentTime); 
         gain.gain.setValueAtTime(0.3, audioCtx.currentTime); 
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
@@ -159,43 +249,6 @@
 
     async function requestWakeLock() {
         try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-    }
-
-    // Load data dengan filter hari ini dan urutan terbaru
-    const q = query(
-        collection(db, "sesi_pijat"), 
-        where("date", "==", dateKey),
-        orderBy("timestamp", "desc")
-    );
-
-    onSnapshot(q, (snapshot) => {
-        const historyBody = document.getElementById('historyBody');
-        let html = "";
-        let countToday = 0;
-        
-        snapshot.forEach((doc) => {
-            const data = doc.data();
-            countToday++;
-            html += `<tr><td><b>Sesi Selesai</b><br><small>${data.date} | ${data.time}</small></td>
-                     <td style="text-align:right; color:var(--primary)">${data.reps} Gerakan</td></tr>`;
-        });
-        
-        document.getElementById('sessionCount').innerText = countToday;
-        historyBody.innerHTML = html || '<tr><td style="text-align:center">Belum ada riwayat hari ini</td></tr>';
-    }, (error) => {
-        console.error("Gagal memuat:", error);
-        document.getElementById('historyBody').innerHTML = '<tr><td style="text-align:center; color:red">Gagal memuat. Pastikan Index sudah Active.</td></tr>';
-    });
-
-    async function saveSession() {
-        try {
-            await addDoc(collection(db, "sesi_pijat"), {
-                date: dateKey,
-                time: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
-                reps: 10,
-                timestamp: Date.now()
-            });
-        } catch (e) { console.error("Gagal simpan:", e); }
     }
 
     async function runTimer(seconds, label, mode) {
@@ -236,6 +289,10 @@
         repLabel.innerText = "Sesi Selesai!";
         document.getElementById('statusIndicator').innerText = "DONE";
         btn.disabled = false;
+        
+        // Kembalikan kalender ke hari ini agar hasil yang baru disimpan langsung terlihat
+        datePicker.value = new Date().toISOString().split('T')[0];
+        loadData(datePicker.value);
     }
 </script>
 </body>
