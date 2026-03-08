@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Pijat Karotis - Yudi Filter Hari Ini</title>
+    <title>Pijat Karotis - Yudi Stable</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -161,10 +161,10 @@
         try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
     }
 
-    // --- FILTER DATA HARI INI SAJA ---
+    // Load data dengan filter hari ini dan urutan terbaru
     const q = query(
         collection(db, "sesi_pijat"), 
-        where("date", "==", dateKey), // Hanya ambil data yang tanggalnya sama dengan hari ini
+        where("date", "==", dateKey),
         orderBy("timestamp", "desc")
     );
 
@@ -182,6 +182,9 @@
         
         document.getElementById('sessionCount').innerText = countToday;
         historyBody.innerHTML = html || '<tr><td style="text-align:center">Belum ada riwayat hari ini</td></tr>';
+    }, (error) => {
+        console.error("Gagal memuat:", error);
+        document.getElementById('historyBody').innerHTML = '<tr><td style="text-align:center; color:red">Gagal memuat. Pastikan Index sudah Active.</td></tr>';
     });
 
     async function saveSession() {
