@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Pijat Karotis - Voice Guide</title>
+    <title>Pijat Karotis - Visual Guide</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -34,6 +34,50 @@
             margin-bottom: 20px;
             border: 1px solid #e2e8f0;
             text-align: center;
+        }
+
+        /* Selektor Posisi */
+        .selector-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .pos-btn {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            background: white;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pos-btn.active {
+            border-color: var(--primary);
+            background: #eff6ff;
+            color: var(--primary);
+        }
+
+        /* Area Gambar */
+        .guide-image-container {
+            width: 100%;
+            height: 180px;
+            background: #f1f5f9;
+            border-radius: 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px dashed #cbd5e1;
+        }
+
+        .guide-image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
 
         .status-badge {
@@ -76,7 +120,7 @@
             box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
         }
 
-        .btn-action:disabled { background: #cbd5e1; box-shadow: none; }
+        .btn-action:disabled { background: #cbd5e1; box-shadow: none; opacity: 0.7; }
 
         .filter-section {
             display: flex;
@@ -93,26 +137,28 @@
             padding: 8px;
             border-radius: 8px;
             font-family: inherit;
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .session-info-text {
-            margin-top: 20px; 
-            font-weight: 600;
-            font-size: 1rem;
         }
 
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 0.9rem; }
         
-        .sync-info { font-size: 0.75rem; color: #94a3b8; margin-top: 15px; }
+        .sync-info { font-size: 0.75rem; color: #94a3b8; margin-top: 15px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
+        <h3 style="margin-top:0; font-size: 1rem;">Pilih Posisi Pijat:</h3>
+        <div class="selector-group">
+            <button class="pos-btn" id="btnKiri" onclick="selectPos('Kiri')">SEBELAH KIRI</button>
+            <button class="pos-btn" id="btnKanan" onclick="selectPos('Kanan')">SEBELAH KANAN</button>
+        </div>
+
+        <div class="guide-image-container" id="guideBox">
+            <span style="color:#94a3b8; font-size: 0.9rem;">Pilih posisi untuk melihat panduan</span>
+        </div>
+
         <div id="statusIndicator" class="status-badge status-idle">Siap Pijat</div>
         <div id="repIndicator" class="repetition-val">Gerakan: 0 / 10</div>
         <div class="timer-val" id="timeValue">0</div>
@@ -121,25 +167,20 @@
             <div id="progressFill"></div>
         </div>
         
-        <button id="mainButton" class="btn-action" onclick="startFullSession()">MULAI 1 SESI</button>
+        <button id="mainButton" class="btn-action" onclick="startFullSession()" disabled>MULAI 1 SESI</button>
         
-        <p class="session-info-text" id="sessionStatusLabel">
+        <p style="margin-top: 20px; font-weight: 600; font-size: 0.9rem;" id="sessionStatusLabel">
             Hari ini sudah selesai <span id="sessionCount">0</span> Sesi dari 5 Sesi
         </p>
     </div>
 
     <div class="card" style="text-align: left;">
         <div class="filter-section">
-            <span style="font-weight: 700; font-size: 0.85rem;">Riwayat Tanggal:</span>
+            <span style="font-weight: 700; font-size: 0.8rem;">Riwayat Sesi:</span>
             <input type="date" id="datePicker">
         </div>
-        
-        <table id="historyTable">
-            <tbody id="historyBody">
-                <tr><td style="text-align:center">Memuat riwayat...</td></tr>
-            </tbody>
-        </table>
-        <div class="sync-info" id="syncStatus">Data tersimpan otomatis</div>
+        <table id="historyTable"><tbody id="historyBody"></tbody></table>
+        <div class="sync-info">Data disinkronkan dengan Firebase Cloud</div>
     </div>
 </div>
 
@@ -159,24 +200,44 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    let selectedSide = null;
     let wakeLock = null;
     let unsubscribe = null;
 
+    const synth = window.speechSynthesis;
+    function speak(text) {
+        if (synth.speaking) synth.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'id-ID';
+        utter.rate = 1.2;
+        synth.speak(utter);
+    }
+
+    // --- LOGIKA PEMILIHAN POSISI ---
+    window.selectPos = function(side) {
+        selectedSide = side;
+        document.getElementById('btnKiri').className = side === 'Kiri' ? 'pos-btn active' : 'pos-btn';
+        document.getElementById('btnKanan').className = side === 'Kanan' ? 'pos-btn active' : 'pos-btn';
+        
+        const guideBox = document.getElementById('guideBox');
+        const startBtn = document.getElementById('mainButton');
+        
+        // Link gambar contoh (Ganti URL ini dengan link gambar Anda jika ada)
+        const imgUrl = side === 'Kiri' 
+            ? 'https://img.freepik.com/free-vector/human-internal-organ-with-carotid-artery_1308-111100.jpg' 
+            : 'https://img.freepik.com/free-vector/human-internal-organ-with-carotid-artery_1308-111100.jpg';
+
+        guideBox.innerHTML = `<img src="${imgUrl}" alt="Panduan ${side}"><br><small style="position:absolute; bottom:5px; background:rgba(255,255,255,0.8); padding:2px 10px; border-radius:10px;">Tekan area ${side}</small>`;
+        guideBox.style.position = "relative";
+        
+        startBtn.disabled = false;
+        speak(`Posisi ${side} dipilih. Silakan mulai sesi.`);
+    };
+
+    // --- FIREBASE & RIWAYAT ---
     const datePicker = document.getElementById('datePicker');
     const todayISO = new Date().toISOString().split('T')[0];
     datePicker.value = todayISO;
-
-    // --- SISTEM SUARA MANUSIA (VOICE GUIDE) ---
-    const synth = window.speechSynthesis;
-
-    function speak(text) {
-        if (synth.speaking) synth.cancel(); // Batalkan suara jika masih bicara
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.lang = 'id-ID'; // Menggunakan Bahasa Indonesia
-        utter.rate = 1.2;     // Kecepatan bicara sedikit dipercepat
-        utter.pitch = 1.0;
-        synth.speak(utter);
-    }
 
     function formatToIdDate(dateString) {
         const [year, month, day] = dateString.split('-');
@@ -187,63 +248,35 @@
         if (unsubscribe) unsubscribe();
         const formattedDate = formatToIdDate(selectedDate);
         const labelEl = document.getElementById('sessionStatusLabel');
-        
-        if (selectedDate === todayISO) {
-            labelEl.innerHTML = `Hari ini sudah selesai <span id="sessionCount">0</span> Sesi dari 5 Sesi`;
-        } else {
-            labelEl.innerHTML = `Tanggal ${formattedDate} selesai <span id="sessionCount">0</span> Sesi`;
-        }
+        labelEl.innerHTML = selectedDate === todayISO 
+            ? `Hari ini sudah selesai <span id="sessionCount">0</span> Sesi dari 5 Sesi`
+            : `Tanggal ${formattedDate} selesai <span id="sessionCount">0</span> Sesi`;
 
-        const q = query(
-            collection(db, "sesi_pijat"), 
-            where("date", "==", formattedDate),
-            orderBy("timestamp", "desc")
-        );
-
+        const q = query(collection(db, "sesi_pijat"), where("date", "==", formattedDate), orderBy("timestamp", "desc"));
         unsubscribe = onSnapshot(q, (snapshot) => {
-            const historyBody = document.getElementById('historyBody');
-            let html = "";
-            let count = 0;
+            const body = document.getElementById('historyBody');
+            let html = ""; let count = 0;
             snapshot.forEach((doc) => {
-                const data = doc.data();
-                count++;
-                html += `<tr><td><b>Sesi Selesai</b><br><small>${data.date} | ${data.time}</small></td>
+                count++; const data = doc.data();
+                html += `<tr><td><b>${data.side || 'Sesi'} Selesai</b><br><small>${data.date} | ${data.time}</small></td>
                          <td style="text-align:right; color:var(--primary)">${data.reps} Gerakan</td></tr>`;
             });
             document.getElementById('sessionCount').innerText = count;
-            historyBody.innerHTML = html || '<tr><td style="text-align:center">Tidak ada riwayat</td></tr>';
+            body.innerHTML = html || '<tr><td style="text-align:center">Belum ada data</td></tr>';
         });
     }
 
     loadData(datePicker.value);
     datePicker.addEventListener('change', (e) => loadData(e.target.value));
 
-    async function saveSession() {
-        const now = new Date();
-        try {
-            await addDoc(collection(db, "sesi_pijat"), {
-                date: now.toLocaleDateString('id-ID'),
-                time: now.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
-                reps: 10,
-                timestamp: Date.now()
-            });
-        } catch (e) { console.error(e); }
-    }
-
-    async function requestWakeLock() {
-        try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-    }
-
-    // --- TIMER DENGAN SUARA HITUNGAN ---
+    // --- RUN TIMER & SESSION ---
     async function runTimer(seconds, label, mode) {
         return new Promise(resolve => {
             let remain = seconds;
             const el = document.getElementById('timeValue');
             const fill = document.getElementById('progressFill');
             const badge = document.getElementById('statusIndicator');
-            
-            // Suara instruksi awal: "Tekan" atau "Lepas"
-            speak(label);
+            speak(`${label} posisi ${selectedSide}`);
 
             const interval = setInterval(() => {
                 el.innerText = remain;
@@ -251,16 +284,8 @@
                 badge.innerText = label;
                 badge.className = `status-badge status-${mode}`;
                 fill.style.backgroundColor = (mode === 'press' ? "var(--danger)" : "var(--success)");
-                
-                // Suara hitungan angka setiap detik
-                if (remain > 0) {
-                    speak(remain.toString());
-                }
-
-                if (remain === 0) {
-                    clearInterval(interval);
-                    resolve(); 
-                }
+                if (remain > 0) speak(remain.toString());
+                if (remain === 0) { clearInterval(interval); resolve(); }
                 remain--;
             }, 1000);
         });
@@ -268,26 +293,27 @@
 
     window.startFullSession = async function() {
         const btn = document.getElementById('mainButton');
-        const repLabel = document.getElementById('repIndicator');
         btn.disabled = true;
-        await requestWakeLock();
+        if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
         
-        speak("Sesi dimulai. Persiapkan diri Anda.");
+        speak(`Sesi dimulai pada posisi ${selectedSide}. Persiapkan diri.`);
         
         for (let i = 1; i <= 10; i++) {
-            repLabel.innerText = `Gerakan: ${i} / 10`;
+            document.getElementById('repIndicator').innerText = `Gerakan: ${i} / 10`;
             await runTimer(10, "Tekan", "press");
             await runTimer(30, "Lepas", "rest");
         }
         
         if (wakeLock) wakeLock.release();
-        await saveSession();
-        speak("Sesi telah selesai. Data berhasil disimpan.");
-        repLabel.innerText = "Sesi Selesai!";
+        await addDoc(collection(db, "sesi_pijat"), {
+            date: new Date().toLocaleDateString('id-ID'),
+            time: new Date().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}),
+            reps: 10, side: selectedSide, timestamp: Date.now()
+        });
+        
+        speak("Sesi selesai. Data posisi " + selectedSide + " berhasil disimpan.");
         document.getElementById('statusIndicator').innerText = "DONE";
         btn.disabled = false;
-        
-        datePicker.value = todayISO;
         loadData(todayISO);
     }
 </script>
