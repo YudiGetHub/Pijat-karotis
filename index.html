@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>Pijat Karotis - Visual Guide</title>
+    <title>Pijat Karotis - Panduan Lengkap</title>
     <style>
         :root {
             --primary: #2563eb;
@@ -18,7 +18,7 @@
             font-family: -apple-system, sans-serif;
             background-color: var(--bg);
             margin: 0;
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -28,30 +28,29 @@
 
         .card {
             background: var(--card);
-            padding: 24px;
+            padding: 20px;
             border-radius: 24px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 1px solid #e2e8f0;
             text-align: center;
         }
 
-        /* Selektor Posisi */
         .selector-group {
             display: flex;
             gap: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .pos-btn {
             flex: 1;
-            padding: 15px;
+            padding: 12px;
             border: 2px solid #e2e8f0;
-            border-radius: 15px;
+            border-radius: 12px;
             background: white;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
+            font-size: 0.9rem;
         }
 
         .pos-btn.active {
@@ -60,49 +59,57 @@
             color: var(--primary);
         }
 
-        /* Area Gambar */
-        .guide-image-container {
-            width: 100%;
-            height: 180px;
+        .guide-box {
             background: #f1f5f9;
             border-radius: 18px;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            margin-bottom: 15px;
             overflow: hidden;
-            border: 1px dashed #cbd5e1;
+            border: 1px solid #cbd5e1;
+            min-height: 100px;
         }
 
-        .guide-image-container img {
-            max-width: 100%;
-            max-height: 100%;
+        .guide-box img {
+            width: 100%;
+            max-height: 250px;
             object-fit: contain;
+            display: block;
+            background: white;
+        }
+
+        .instruction-text {
+            text-align: left;
+            padding: 15px;
+            font-size: 0.85rem;
+            color: #475569;
+            line-height: 1.4;
+            background: #fff;
+            border-top: 1px solid #e2e8f0;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 12px 30px;
+            padding: 10px 25px;
             border-radius: 50px;
             font-weight: 700;
             text-transform: uppercase;
             margin-bottom: 10px;
+            font-size: 0.8rem;
         }
 
         .status-idle { background: #f1f5f9; color: #64748b; }
         .status-press { background: #fee2e2; color: var(--danger); border: 2px solid var(--danger); }
         .status-rest { background: #dcfce7; color: var(--success); border: 2px solid var(--success); }
 
-        .timer-val { font-size: 5.5rem; font-weight: 900; color: #1e293b; margin: 5px 0; }
-        .repetition-val { font-size: 1.2rem; font-weight: 700; color: var(--primary); margin-bottom: 15px; }
+        .timer-val { font-size: 5rem; font-weight: 900; color: #1e293b; margin: 0; }
+        .repetition-val { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-bottom: 10px; }
 
         .progress-track {
             width: 100%;
-            height: 16px;
+            height: 12px;
             background: #f1f5f9;
             border-radius: 10px;
             overflow: hidden;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         #progressFill { width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear; }
@@ -111,76 +118,58 @@
             background: var(--primary);
             color: white;
             border: none;
-            padding: 20px;
-            border-radius: 18px;
-            font-size: 1.3rem;
+            padding: 18px;
+            border-radius: 15px;
+            font-size: 1.2rem;
             font-weight: 700;
             cursor: pointer;
             width: 100%;
-            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
         }
 
-        .btn-action:disabled { background: #cbd5e1; box-shadow: none; opacity: 0.7; }
+        .btn-action:disabled { background: #cbd5e1; box-shadow: none; opacity: 0.6; }
 
-        .filter-section {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            background: #f1f5f9;
-            padding: 10px;
-            border-radius: 12px;
-        }
-
-        input[type="date"] {
-            border: 1px solid #cbd5e1;
-            padding: 8px;
-            border-radius: 8px;
-            font-family: inherit;
-        }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-size: 0.9rem; }
-        
-        .sync-info { font-size: 0.75rem; color: #94a3b8; margin-top: 15px; text-align: center; }
+        .history-card { text-align: left; }
+        input[type="date"] { border: 1px solid #cbd5e1; padding: 5px; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        td { padding: 10px 5px; border-bottom: 1px solid #f1f5f9; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h3 style="margin-top:0; font-size: 1rem;">Pilih Posisi Pijat:</h3>
+        <h4 style="margin: 0 0 10px 0;">PILIH SISI PIJAT</h4>
         <div class="selector-group">
-            <button class="pos-btn" id="btnKiri" onclick="selectPos('Kiri')">SEBELAH KIRI</button>
-            <button class="pos-btn" id="btnKanan" onclick="selectPos('Kanan')">SEBELAH KANAN</button>
+            <button class="pos-btn" id="btnKiri" onclick="selectPos('Kiri')">SISI KIRI</button>
+            <button class="pos-btn" id="btnKanan" onclick="selectPos('Kanan')">SISI KANAN</button>
         </div>
 
-        <div class="guide-image-container" id="guideBox">
-            <span style="color:#94a3b8; font-size: 0.9rem;">Pilih posisi untuk melihat panduan</span>
+        <div class="guide-box" id="guideContainer">
+            <div style="padding: 40px 20px; color: #94a3b8; font-size: 0.9rem;">
+                Silakan pilih sisi leher untuk melihat panduan langkah medis
+            </div>
         </div>
 
-        <div id="statusIndicator" class="status-badge status-idle">Siap Pijat</div>
+        <div id="statusIndicator" class="status-badge status-idle">SIAP</div>
         <div id="repIndicator" class="repetition-val">Gerakan: 0 / 10</div>
         <div class="timer-val" id="timeValue">0</div>
         
-        <div class="progress-track">
-            <div id="progressFill"></div>
-        </div>
+        <div class="progress-track"><div id="progressFill"></div></div>
         
-        <button id="mainButton" class="btn-action" onclick="startFullSession()" disabled>MULAI 1 SESI</button>
+        <button id="mainButton" class="btn-action" onclick="startFullSession()" disabled>MULAI SESI</button>
         
-        <p style="margin-top: 20px; font-weight: 600; font-size: 0.9rem;" id="sessionStatusLabel">
-            Hari ini sudah selesai <span id="sessionCount">0</span> Sesi dari 5 Sesi
+        <p style="margin-top: 15px; font-weight: 600; font-size: 0.85rem;" id="sessionStatusLabel">
+            Hari ini: <span id="sessionCount">0</span> / 5 Sesi
         </p>
     </div>
 
-    <div class="card" style="text-align: left;">
-        <div class="filter-section">
-            <span style="font-weight: 700; font-size: 0.8rem;">Riwayat Sesi:</span>
+    <div class="card history-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <b style="font-size: 0.9rem;">RIWAYAT</b>
             <input type="date" id="datePicker">
         </div>
         <table id="historyTable"><tbody id="historyBody"></tbody></table>
-        <div class="sync-info">Data disinkronkan dengan Firebase Cloud</div>
     </div>
 </div>
 
@@ -209,74 +198,74 @@
         if (synth.speaking) synth.cancel();
         const utter = new SpeechSynthesisUtterance(text);
         utter.lang = 'id-ID';
-        utter.rate = 1.2;
+        utter.rate = 1.3;
         synth.speak(utter);
     }
 
-    // --- LOGIKA PEMILIHAN POSISI ---
+    // --- FUNGSI UPDATE TAMPILAN PANDUAN ---
     window.selectPos = function(side) {
         selectedSide = side;
         document.getElementById('btnKiri').className = side === 'Kiri' ? 'pos-btn active' : 'pos-btn';
         document.getElementById('btnKanan').className = side === 'Kanan' ? 'pos-btn active' : 'pos-btn';
         
-        const guideBox = document.getElementById('guideBox');
-        const startBtn = document.getElementById('mainButton');
-        
-        // Link gambar contoh (Ganti URL ini dengan link gambar Anda jika ada)
+        const guideContainer = document.getElementById('guideContainer');
         const imgUrl = side === 'Kiri' 
-            ? 'https://img.freepik.com/free-vector/human-internal-organ-with-carotid-artery_1308-111100.jpg' 
-            : 'https://img.freepik.com/free-vector/human-internal-organ-with-carotid-artery_1308-111100.jpg';
+            ? "https://i.ibb.co.com/FLwmx838/pijat-kiri.jpg" 
+            : "https://i.ibb.co.com/7dWWbdnk/pijat-kanan.jpg";
 
-        guideBox.innerHTML = `<img src="${imgUrl}" alt="Panduan ${side}"><br><small style="position:absolute; bottom:5px; background:rgba(255,255,255,0.8); padding:2px 10px; border-radius:10px;">Tekan area ${side}</small>`;
-        guideBox.style.position = "relative";
+        const opposite = side === 'Kiri' ? 'Kanan' : 'Kiri';
+
+        guideContainer.innerHTML = `
+            <img src="${imgUrl}" alt="Panduan ${side}">
+            <div class="instruction-text">
+                <b>Cara Pijat Sisi ${side.toUpperCase()}:</b><br>
+                1. Berbaring rileks, tengokkan kepala sedikit ke <b>${opposite}</b>.<br>
+                2. Tempelkan telunjuk & jari tengah di titik nadi leher ${side}.<br>
+                3. Beri tekanan lembut dengan gerakan melingkar kecil.<br>
+                4. Ikuti hitungan: <b>10 detik TEKAN, 30 detik LEPAS</b>.
+            </div>
+        `;
         
-        startBtn.disabled = false;
-        speak(`Posisi ${side} dipilih. Silakan mulai sesi.`);
+        document.getElementById('mainButton').disabled = false;
+        document.getElementById('statusIndicator').innerText = "SIAP: " + side.toUpperCase();
+        speak(`Posisi ${side} dipilih. Silakan baca panduan lalu klik mulai.`);
     };
 
-    // --- FIREBASE & RIWAYAT ---
+    // --- FIREBASE LOGIC ---
     const datePicker = document.getElementById('datePicker');
     const todayISO = new Date().toISOString().split('T')[0];
     datePicker.value = todayISO;
 
-    function formatToIdDate(dateString) {
-        const [year, month, day] = dateString.split('-');
-        return `${parseInt(day)}/${parseInt(month)}/${year}`;
-    }
-
     function loadData(selectedDate) {
         if (unsubscribe) unsubscribe();
-        const formattedDate = formatToIdDate(selectedDate);
-        const labelEl = document.getElementById('sessionStatusLabel');
-        labelEl.innerHTML = selectedDate === todayISO 
-            ? `Hari ini sudah selesai <span id="sessionCount">0</span> Sesi dari 5 Sesi`
-            : `Tanggal ${formattedDate} selesai <span id="sessionCount">0</span> Sesi`;
-
+        const [y, m, d] = selectedDate.split('-');
+        const formattedDate = `${parseInt(d)}/${parseInt(m)}/${y}`;
+        
         const q = query(collection(db, "sesi_pijat"), where("date", "==", formattedDate), orderBy("timestamp", "desc"));
         unsubscribe = onSnapshot(q, (snapshot) => {
             const body = document.getElementById('historyBody');
             let html = ""; let count = 0;
             snapshot.forEach((doc) => {
                 count++; const data = doc.data();
-                html += `<tr><td><b>${data.side || 'Sesi'} Selesai</b><br><small>${data.date} | ${data.time}</small></td>
+                html += `<tr><td><b>${data.side || 'Sesi'}</b><br><small>${data.time}</small></td>
                          <td style="text-align:right; color:var(--primary)">${data.reps} Gerakan</td></tr>`;
             });
             document.getElementById('sessionCount').innerText = count;
-            body.innerHTML = html || '<tr><td style="text-align:center">Belum ada data</td></tr>';
+            body.innerHTML = html || '<tr><td colspan="2" style="text-align:center">Tidak ada data</td></tr>';
         });
     }
 
     loadData(datePicker.value);
     datePicker.addEventListener('change', (e) => loadData(e.target.value));
 
-    // --- RUN TIMER & SESSION ---
+    // --- TIMER ENGINE ---
     async function runTimer(seconds, label, mode) {
         return new Promise(resolve => {
             let remain = seconds;
             const el = document.getElementById('timeValue');
             const fill = document.getElementById('progressFill');
             const badge = document.getElementById('statusIndicator');
-            speak(`${label} posisi ${selectedSide}`);
+            speak(label);
 
             const interval = setInterval(() => {
                 el.innerText = remain;
@@ -296,7 +285,8 @@
         btn.disabled = true;
         if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
         
-        speak(`Sesi dimulai pada posisi ${selectedSide}. Persiapkan diri.`);
+        const opposite = selectedSide === 'Kiri' ? 'Kanan' : 'Kiri';
+        speak(`Sesi dimulai. Tengokkan kepala ke ${opposite}.`);
         
         for (let i = 1; i <= 10; i++) {
             document.getElementById('repIndicator').innerText = `Gerakan: ${i} / 10`;
@@ -311,7 +301,7 @@
             reps: 10, side: selectedSide, timestamp: Date.now()
         });
         
-        speak("Sesi selesai. Data posisi " + selectedSide + " berhasil disimpan.");
+        speak("Sesi selesai. Data berhasil disimpan.");
         document.getElementById('statusIndicator').innerText = "DONE";
         btn.disabled = false;
         loadData(todayISO);
